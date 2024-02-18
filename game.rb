@@ -1,3 +1,5 @@
+require 'colorize'
+
 class NilClass
 	def [] arg
 		nil
@@ -6,6 +8,8 @@ end
 
 class GameBoard
 	def initialize(rank)
+		@char = "*"
+		@log = {}
 		@rank = rank
 
 		@current_matrix = []
@@ -18,7 +22,7 @@ class GameBoard
 		end
 	end
 
-	def input_matrix(char)
+	def input_matrix
 		random_row_placement = rand @rank
 		random_column_placement = rand @rank
 
@@ -29,13 +33,13 @@ class GameBoard
 			row = []
 			column_counter = 0
 			@rank.times do |b|
-				if @current_matrix[row_counter][column_counter].include?(char)|| (
+				if @current_matrix[row_counter][column_counter].include?(@char)|| (
 						(column_counter == random_column_placement) && 
 						(row_counter == random_row_placement)
 					)
-					row << " #{char} "
+					row << "#{@char}"
 				else
-					row << "   "
+					row << " "
 				end
 				column_counter += 1
 			end
@@ -48,13 +52,17 @@ class GameBoard
 	end
 
 
-	def display
+	def display(first=false)
 		output = ""
 		@current_matrix.each do |row|
 			output += "#{row.join(' ')}" + "\n"
 		end
 
-		print "#{output} \r"
+		if first
+			print "#{output} \r".yellow
+		else
+			print "#{output} \r".red
+		end
 	end
 
 	def apply_rules
@@ -64,6 +72,7 @@ class GameBoard
 		# Any dead cell with exactly three live neighbors becomes a live cell, as if by reproduction.
 
 		new_matrix = []
+		@log[@current_matrix.clone] = true
 
 
 		@current_matrix.each_with_index do |row, y|
@@ -81,26 +90,26 @@ class GameBoard
 					@current_matrix[y - 1][x - 1],
 					@current_matrix[y - 1][x]
 				].compact.each do |neighbor|
-					if neighbor.include?("*")
+					if neighbor.include?(@char)
 						count += 1
 					end
 				end
 
 				# decide fate
 				next_gen = begin
-					if cell.include?("*")
+					if cell.include?(@char)
 						if count < 2
-							"   "
+							" "
 						elsif count == 2 || count == 3
-							" * "
+							"#{@char}"
 						else
-							"   "
+							" "
 						end
 					else
 						if count == 3
-							" * "
+							"#{@char}"
 						else
-							"   "
+							" "
 						end
 					end
 				end
@@ -113,7 +122,6 @@ class GameBoard
 		end
 
 		# replace current matrix
-
 		@current_matrix = new_matrix
 	end
 
@@ -126,8 +134,8 @@ class GameBoard
 	def initialize_board amt
 		amt.times do 
 			print  "\r" + ("\e[A\e[K"*@rank)
-			input_matrix "*"
-			display
+			input_matrix
+			display(true)
 		end
 
 		print "\n"
@@ -137,13 +145,19 @@ class GameBoard
 	end
 
 	def play
-		while true do 
+		still_go = true
+		while still_go do 
 			run
-			sleep(1)
+			sleep(0.1)
+
+			if @log[@current_matrix.clone] 
+				print "finished in #{@log.length} steps \n"
+				break 
+			end
 		end
 	end
 end
 
-b = GameBoard.new(40)
-b.initialize_board 700
+b = GameBoard.new(25)
+b.initialize_board rand(625)
 b.play
